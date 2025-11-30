@@ -19,7 +19,7 @@ import {
     setActiveBabyId,
     ensureDataConsistency
 } from './services/storageService';
-import { supabase } from './services/supabaseClient';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 import { Baby, ChevronDown, Moon, Sun, Loader2, Info, ShieldCheck } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 
@@ -107,6 +107,11 @@ const App: React.FC = () => {
 
   // --- Authentication Check ---
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+        setAuthLoading(false);
+        return;
+    }
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         setSession(session);
@@ -163,7 +168,7 @@ const App: React.FC = () => {
     }
 
     // Setup Realtime Subscription (Only if logged in to Supabase)
-    if (session?.user?.id) {
+    if (session?.user?.id && isSupabaseConfigured) {
         const ownerId = session.user.id;
         const channel = supabase
         .channel('table-db-changes')
@@ -410,6 +415,32 @@ const App: React.FC = () => {
   };
 
   // --- Rendering ---
+
+  // Check Supabase Config First
+  if (!isSupabaseConfigured) {
+      return (
+        <div className="h-screen w-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-200 dark:border-slate-700">
+                <ShieldCheck size={64} className="text-rose-500 mx-auto mb-6" />
+                <h1 className="text-2xl font-bold mb-3">Configuração Necessária</h1>
+                <p className="text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                    Para utilizar o EvaLog, você precisa conectar o banco de dados Supabase.
+                </p>
+                <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl text-left text-xs font-mono overflow-x-auto mb-6 border border-slate-200 dark:border-slate-800">
+                    <p className="text-slate-500 mb-2 font-bold uppercase tracking-wider">Arquivo .env</p>
+                    <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_URL=...</p>
+                    <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_ANON_KEY=...</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl text-left flex items-start">
+                    <Info size={20} className="text-amber-500 shrink-0 mr-3 mt-0.5" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Siga as instruções no arquivo <strong>SUPABASE_SETUP.md</strong> para criar seu projeto e obter as chaves.
+                    </p>
+                </div>
+            </div>
+        </div>
+      );
+  }
 
   if (authLoading) {
       return (

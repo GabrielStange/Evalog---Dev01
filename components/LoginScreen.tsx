@@ -67,6 +67,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
                 .single();
 
             if (inviteCheckError || !invites) {
+                // If network fails here, it throws 'Failed to fetch'
+                if (inviteCheckError && inviteCheckError.message === 'Failed to fetch') throw inviteCheckError;
                 throw new Error("Código de convite inválido ou inexistente.");
             }
 
@@ -84,7 +86,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
 
             if (authData.user) {
                 // 3. Mark invite as used by this user
-                // Note: The RLS 'Users can claim open invites' allows this update because used_by is null.
                 const { error: updateError } = await supabase
                     .from('invites')
                     .update({ 
@@ -95,13 +96,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
 
                 if (updateError) {
                     console.error("Erro ao vincular convite", updateError);
-                    // Critical error but user is created. We inform success but log error.
                 }
 
                 setSuccessMsg("Conta criada com sucesso! Você já pode fazer login.");
                 setTimeout(() => {
-                    // Auto login often happens on creation, but if email confirmation is on, we wait.
-                    // For this app flow, we redirect to login to be safe.
                     setMode('login');
                     setEmail(email); 
                     setPassword(password); 
@@ -112,6 +110,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
         console.error(error);
         if (error.message === 'Invalid login credentials') {
             setErrorMsg("E-mail ou senha incorretos.");
+        } else if (error.message === 'Failed to fetch') {
+            setErrorMsg("Erro de conexão. Verifique sua internet ou as configurações do servidor.");
         } else {
             setErrorMsg(error.message || "Ocorreu um erro. Tente novamente.");
         }

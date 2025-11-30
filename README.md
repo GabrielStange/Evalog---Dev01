@@ -13,16 +13,12 @@ Este projeto é uma aplicação web React (Vite) integrada com Supabase e Google
 ### Passo 1: Configuração do Supabase (Banco de Dados)
 
 1. Crie um novo projeto no Supabase.
-2. No menu lateral, vá em **SQL Editor**.
-3. Clique em **New Query**.
-4. Copie o conteúdo do arquivo `db/schema.sql` deste repositório e cole no editor.
-5. Clique em **Run** para criar as tabelas e políticas de segurança.
-6. **Criação do Administrador:**
+2. Siga as instruções detalhadas no arquivo **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** para criar as tabelas e políticas de segurança.
+3. **Criação do Administrador:**
     - Vá ao menu **Authentication** > **Users**.
     - Clique em **Add User** > **Create New User**.
     - Insira o e-mail e senha do Administrador (ex: `admin@evalog.app`).
     - Clique em **Create User**.
-    - *Nota: O primeiro usuário criado terá acesso total aos dados se as políticas RLS forem configuradas para tal, ou servirá como base para criar convites.*
 
 ### Passo 2: Configuração do Código (Variáveis de Ambiente)
 
@@ -71,7 +67,6 @@ npm run dev
 
 ## 🔐 Gestão de Usuários
 
-O sistema de cadastro é fechado.
+O sistema de cadastro é fechado (requer convite ou criação manual).
 1. O **Administrador** deve ser criado manualmente no painel do Supabase (Authentication).
-2. Para adicionar novos usuários (ex: cônjuge, babá), o Administrador deve criar um **Convite** (feature a ser implementada via banco de dados na tabela `invites`) ou criar o usuário manualmente no Supabase.
-
+2. Para adicionar novos usuários (ex: cônjuge, babá), o Administrador deve criar um **Convite** (feature futura) ou criar o usuário manualmente no painel do Supabase.

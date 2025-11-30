@@ -1,0 +1,5 @@
+{
+  "name": "EvaLog",
+  "description": "Um aplicativo intuitivo para pais monitorarem a frequência e quantidade das amamentações e mamadeiras, com insights gerados por IA.",
+  "requestFramePermissions": []
+}

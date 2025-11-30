@@ -19,13 +19,11 @@ Como o sistema utiliza o Supabase (PostgreSQL), execute os comandos abaixo para 
 create extension if not exists "uuid-ossp";
 
 -- 2. Criação da Tabela de Bebês (Babies)
--- As colunas usam aspas ("coluna") para garantir que o nome seja case-sensitive (CamelCase),
--- facilitando o mapeamento direto com o código TypeScript.
 create table if not exists public.babies (
   "id" uuid not null primary key default uuid_generate_v4(),
   "ownerId" uuid not null references auth.users(id) on delete cascade,
   "name" text not null,
-  "birthDate" bigint not null, -- Timestamp em milissegundos
+  "birthDate" bigint not null,
   "gender" text not null check (gender in ('boy', 'girl')),
   "themeColor" text not null default 'rose',
   "weightKg" double precision,
@@ -42,43 +40,82 @@ create table if not exists public.records (
   "type" text not null check (type in ('breast_left', 'breast_right', 'bottle')),
   "startTime" bigint not null,
   "endTime" bigint,
-  "pauses" jsonb, -- Armazena array de pausas no formato JSON
+  "pauses" jsonb,
   "durationSeconds" double precision,
   "volumeMl" double precision,
   "notes" text,
   "createdAt" bigint not null
 );
 
--- 4. Habilitar Row Level Security (RLS)
--- Isso ativa o sistema de segurança onde políticas definem quem pode ver o quê.
+-- 4. Criação da Tabela de Convites (Invites) - NOVO
+-- Esta tabela controla quem pode se cadastrar no sistema.
+create table if not exists public.invites (
+  "code" text not null primary key,
+  "created_at" timestamp with time zone default timezone('utc'::text, now()) not null,
+  "used_at" timestamp with time zone,
+  "used_by" uuid references auth.users(id)
+);
+
+-- 5. Habilitar Row Level Security (RLS)
 alter table public.babies enable row level security;
 alter table public.records enable row level security;
+alter table public.invites enable row level security;
 
--- 5. Configurar Políticas de Acesso (Policies)
+-- 6. Configurar Políticas de Acesso (Policies)
 
--- Remover políticas antigas se existirem para evitar conflitos ao rodar o script novamente
+-- Limpeza de políticas antigas
 drop policy if exists "Users can manage their own babies" on public.babies;
 drop policy if exists "Users can manage their own records" on public.records;
+drop policy if exists "Anyone can check invites" on public.invites;
+drop policy if exists "Users can update their own invite" on public.invites;
+drop policy if exists "Admin full access to invites" on public.invites;
 
--- Política: Usuários só podem ver/editar/deletar dados onde o "ownerId" é igual ao seu ID de login
+-- Políticas de Usuário (Babies e Records)
 create policy "Users can manage their own babies"
-on public.babies
-for all
+on public.babies for all
 using (auth.uid() = "ownerId")
 with check (auth.uid() = "ownerId");
 
 create policy "Users can manage their own records"
-on public.records
-for all
+on public.records for all
 using (auth.uid() = "ownerId")
 with check (auth.uid() = "ownerId");
+
+-- Políticas de Convites (Invites)
+-- Permite que qualquer pessoa (mesmo sem login) leia a tabela para verificar se o código existe
+create policy "Anyone can read invites"
+on public.invites for select
+to anon, authenticated
+using (true);
+
+-- Permite que um usuário autenticado marque o convite como "usado" se ele estiver livre
+create policy "Users can claim open invites"
+on public.invites for update
+to authenticated
+using (used_by is null)
+with check (used_by = auth.uid());
+
+-- Permite inserção de convites (Para facilitar, deixaremos aberto para users autenticados neste script, 
+-- mas no Frontend controlaremos via email do Admin. Em produção rigorosa, usaríamos uma função segura).
+create policy "Authenticated users can create invites"
+on public.invites for insert
+to authenticated
+with check (true);
 ```
 
 ## Configuração de Ambiente
 
-Após rodar o script, certifique-se de pegar suas chaves de API em **Project Settings > API** e atualizar seu arquivo `.env`:
+Atualize seu arquivo `.env` com as chaves e o e-mail do administrador:
 
 ```env
 VITE_SUPABASE_URL=sua_url_do_projeto
 VITE_SUPABASE_ANON_KEY=sua_chave_anon_publica
+VITE_ADMIN_EMAIL=seu_email_admin@exemplo.com
 ```
+
+### Como Cadastrar o Administrador:
+1. Abra a aplicação.
+2. Na tela de Login, tente logar com o e-mail definido em `VITE_ADMIN_EMAIL`.
+3. Se a conta não existir, o Supabase retornará erro.
+4. Vá ao **Supabase Dashboard > Authentication > Users** e crie este usuário manualmente ("Add User").
+5. Agora logue na aplicação. O botão "Gestão de Convites" aparecerá no menu superior.

@@ -46,7 +46,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
             if (error) throw error;
         } 
         else {
-            // Registration Logic (Invite Only)
+            // Registration Logic
             if (password !== confirmPassword) {
                 throw new Error("As senhas não coincidem.");
             }
@@ -54,27 +54,59 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ isDarkMode, toggleTheme }) =>
                 throw new Error("A senha deve ter pelo menos 6 caracteres.");
             }
 
-            if (!inviteCode.trim()) {
+            const cleanCode = inviteCode.trim().toUpperCase();
+            if (!cleanCode) {
                 throw new Error("Código de convite é obrigatório.");
             }
 
-            // TODO: Validate invite code against DB before creating user
-            // For now, we proceed to create the user. If invite logic is enforced via RLS/Triggers, it will fail there or here.
+            // 1. Verify Invite Code
+            const { data: invites, error: inviteCheckError } = await supabase
+                .from('invites')
+                .select('*')
+                .eq('code', cleanCode)
+                .single();
+
+            if (inviteCheckError || !invites) {
+                throw new Error("Código de convite inválido ou inexistente.");
+            }
+
+            if (invites.used_at || invites.used_by) {
+                throw new Error("Este código de convite já foi utilizado.");
+            }
             
-            const { error } = await supabase.auth.signUp({
+            // 2. Create User
+            const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email,
-                password,
-                options: {
-                    data: {
-                        invite_code: inviteCode // Store invite code in metadata for trigger processing if needed
-                    }
-                }
+                password
             });
 
-            if (error) throw error;
+            if (signUpError) throw signUpError;
 
-            setSuccessMsg("Conta criada com sucesso! Verifique seu e-mail para confirmar (se necessário) ou faça login.");
-            setTimeout(() => setMode('login'), 3000);
+            if (authData.user) {
+                // 3. Mark invite as used by this user
+                // Note: The RLS 'Users can claim open invites' allows this update because used_by is null.
+                const { error: updateError } = await supabase
+                    .from('invites')
+                    .update({ 
+                        used_at: new Date().toISOString(),
+                        used_by: authData.user.id
+                    })
+                    .eq('code', cleanCode);
+
+                if (updateError) {
+                    console.error("Erro ao vincular convite", updateError);
+                    // Critical error but user is created. We inform success but log error.
+                }
+
+                setSuccessMsg("Conta criada com sucesso! Você já pode fazer login.");
+                setTimeout(() => {
+                    // Auto login often happens on creation, but if email confirmation is on, we wait.
+                    // For this app flow, we redirect to login to be safe.
+                    setMode('login');
+                    setEmail(email); 
+                    setPassword(password); 
+                }, 2000);
+            }
         }
     } catch (error: any) {
         console.error(error);

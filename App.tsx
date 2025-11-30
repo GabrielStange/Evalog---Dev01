@@ -8,6 +8,7 @@ import AIInsights from './components/AIInsights';
 import BabyProfileManager from './components/BabyProfileManager';
 import ActiveTimerWidget from './components/ActiveTimerWidget';
 import LoginScreen from './components/LoginScreen';
+import AdminInviteManager from './components/AdminInviteManager';
 import { 
     getRecords, 
     saveRecord, 
@@ -19,7 +20,7 @@ import {
     ensureDataConsistency
 } from './services/storageService';
 import { supabase } from './services/supabaseClient';
-import { Baby, ChevronDown, Moon, Sun, Loader2, Info } from 'lucide-react';
+import { Baby, ChevronDown, Moon, Sun, Loader2, Info, ShieldCheck } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 
 const STORAGE_KEY_TIMER_BREAST = 'evalog_timer_breast_v1';
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   });
   
   const [showProfileManager, setShowProfileManager] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // --- LIFTED STATE: Feeding Timer (Initialized from LocalStorage) ---
   const [activeSide, setActiveSide] = useState<'left' | 'right' | null>(() => {
@@ -422,6 +424,11 @@ const App: React.FC = () => {
       return <LoginScreen isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
   }
 
+  // Check Admin
+  // @ts-ignore
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+  const isAdmin = session.user.email === adminEmail;
+
   // Derived Data
   const currentBabyRecords = allRecords.filter(r => r.babyId === currentBabyId);
   const currentBabyProfile = babies.find(b => b.id === currentBabyId);
@@ -473,6 +480,14 @@ const App: React.FC = () => {
           <div>
              <div className="flex items-center gap-2">
                  <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-none">EvaLog</h1>
+                 {isAdmin && (
+                    <button 
+                        onClick={() => setShowAdminPanel(true)}
+                        className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border border-amber-200 dark:border-amber-800"
+                    >
+                        Admin
+                    </button>
+                 )}
              </div>
              <p className="text-xs text-slate-400 font-medium">Monitor de Amamentação</p>
           </div>
@@ -603,6 +618,13 @@ const App: React.FC = () => {
             onSelectBaby={handleSelectBaby}
             onSaveBaby={handleSaveBaby}
             onClose={() => setShowProfileManager(false)}
+            themeColor={themeColor}
+          />
+      )}
+
+      {showAdminPanel && (
+          <AdminInviteManager 
+            onClose={() => setShowAdminPanel(false)}
             themeColor={themeColor}
           />
       )}

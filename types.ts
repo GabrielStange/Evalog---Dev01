@@ -35,6 +35,13 @@ export interface FeedingRecord {
   createdAt: number;
 }
 
+export interface InviteCode {
+    code: string;
+    created_at: string;
+    used_at: string | null;
+    used_by: string | null;
+}
+
 export enum AppTab {
   TRACKER = 'tracker',
   HISTORY = 'history',

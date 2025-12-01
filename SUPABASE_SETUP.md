@@ -109,7 +109,7 @@ Atualize seu arquivo `.env` com as chaves e o e-mail do administrador:
 
 ```env
 VITE_SUPABASE_URL=sua_url_do_projeto
-VITE_SUPABASE_ANON_KEY=sua_chave_anon_publica
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sua_chave_publica
 VITE_ADMIN_EMAIL=seu_email_admin@exemplo.com
 ```
 

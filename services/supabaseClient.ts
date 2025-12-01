@@ -8,7 +8,7 @@ try {
   // @ts-ignore
   supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   // @ts-ignore
-  supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 } catch (error) {
   // Ignore
 }
@@ -19,7 +19,7 @@ if (!supabaseUrl && typeof process !== 'undefined' && process.env) {
     // @ts-ignore
     supabaseUrl = process.env.VITE_SUPABASE_URL || '';
     // @ts-ignore
-    supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+    supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
   } catch (e) {}
 }
 

@@ -429,7 +429,7 @@ const App: React.FC = () => {
                 <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl text-left text-xs font-mono overflow-x-auto mb-6 border border-slate-200 dark:border-slate-800">
                     <p className="text-slate-500 mb-2 font-bold uppercase tracking-wider">Arquivo .env</p>
                     <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_URL=...</p>
-                    <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_ANON_KEY=...</p>
+                    <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=...</p>
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl text-left flex items-start">
                     <Info size={20} className="text-amber-500 shrink-0 mr-3 mt-0.5" />

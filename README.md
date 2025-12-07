@@ -25,7 +25,7 @@ Este projeto é uma aplicação web React (Vite) integrada com Supabase e Google
 Para que a aplicação funcione, ela precisa se conectar ao seu projeto Supabase.
 
 1. No painel do Supabase, vá em **Project Settings** > **API**.
-2. Copie a `Project URL` e a `anon public` Key.
+2. Copie a `Project URL` e a `anon` / `public` Key.
 
 ### Passo 3: Publicação no Netlify
 
@@ -40,7 +40,7 @@ Para que a aplicação funcione, ela precisa se conectar ao seu projeto Supabase
 | Key | Value | Descrição |
 | :--- | :--- | :--- |
 | `VITE_SUPABASE_URL` | *Sua URL do Supabase* | URL do Projeto (Passo 2) |
-| `VITE_SUPABASE_ANON_KEY` | *Sua Key Anon do Supabase* | Chave Pública (Passo 2) |
+| `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | *Sua Key Pública do Supabase* | Chave Pública (Passo 2) |
 
 6. Clique em **Deploy site**.
 
@@ -55,7 +55,7 @@ Para rodar o projeto na sua máquina:
 
 ```env
 VITE_SUPABASE_URL=sua_url_do_supabase
-VITE_SUPABASE_ANON_KEY=sua_chave_anon_publica
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sua_chave_publica
 ```
 
 3. Instale as dependências e rode:

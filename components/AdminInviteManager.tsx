@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { InviteCode, ThemeColor } from '../types';
-import { Ticket, Copy, Check, X, RefreshCw, Plus } from 'lucide-react';
+import { Ticket, Copy, Check, X, RefreshCw, Plus, Users } from 'lucide-react';
+import { getUserFamily } from '../services/storageService';
 
 interface AdminInviteManagerProps {
     onClose: () => void;
@@ -12,35 +14,42 @@ const AdminInviteManager: React.FC<AdminInviteManagerProps> = ({ onClose, themeC
     const [invites, setInvites] = useState<InviteCode[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const [familyId, setFamilyId] = useState<string | null>(null);
 
-    const loadInvites = async () => {
+    const loadData = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('invites')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (data) setInvites(data as InviteCode[]);
+        const family = await getUserFamily();
+        if (family) {
+            setFamilyId(family.id);
+            const { data, error } = await supabase
+                .from('invites')
+                .select('*')
+                .eq('family_id', family.id)
+                .order('created_at', { ascending: false });
+            
+            if (data) setInvites(data as InviteCode[]);
+        }
         setLoading(false);
     };
 
     useEffect(() => {
-        loadInvites();
+        loadData();
     }, []);
 
     const generateInvite = async () => {
+        if (!familyId) return;
         setGenerating(true);
         // Generate a random 6 char code
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         
         const { error } = await supabase
             .from('invites')
-            .insert([{ code }]);
+            .insert([{ code, family_id: familyId }]);
 
         if (error) {
-            alert('Erro ao gerar convite');
+            alert('Erro ao gerar convite: ' + error.message);
         } else {
-            await loadInvites();
+            await loadData();
         }
         setGenerating(false);
     };
@@ -55,8 +64,8 @@ const AdminInviteManager: React.FC<AdminInviteManagerProps> = ({ onClose, themeC
             <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
                 <div className={`bg-slate-800 p-4 flex justify-between items-center text-white`}>
                     <div className="flex items-center gap-2">
-                        <Ticket size={20} className="text-amber-400" />
-                        <h3 className="font-bold text-lg">Gestão de Convites</h3>
+                        <Users size={20} className="text-white" />
+                        <h3 className="font-bold text-lg">Convidar para Família</h3>
                     </div>
                     <button onClick={onClose}><X size={24} /></button>
                 </div>
@@ -64,14 +73,14 @@ const AdminInviteManager: React.FC<AdminInviteManagerProps> = ({ onClose, themeC
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
                     <button 
                         onClick={generateInvite}
-                        disabled={generating}
+                        disabled={generating || !familyId}
                         className={`w-full bg-${themeColor}-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-${themeColor}-600 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors`}
                     >
                         {generating ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
-                        Gerar Novo Código
+                        Gerar Novo Convite
                     </button>
                     <p className="text-xs text-slate-500 mt-2 text-center">
-                        Este código será necessário para novos usuários criarem conta.
+                        Envie este código para quem você quer adicionar à sua família no app.
                     </p>
                 </div>
 
@@ -79,7 +88,7 @@ const AdminInviteManager: React.FC<AdminInviteManagerProps> = ({ onClose, themeC
                     {loading ? (
                         <div className="text-center py-8 text-slate-400">Carregando...</div>
                     ) : invites.length === 0 ? (
-                        <div className="text-center py-8 text-slate-400">Nenhum convite gerado.</div>
+                        <div className="text-center py-8 text-slate-400">Nenhum convite ativo.</div>
                     ) : (
                         invites.map((invite) => (
                             <div key={invite.code} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">

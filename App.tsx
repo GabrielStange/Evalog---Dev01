@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { AppTab, FeedingRecord, BabyProfile, PauseInterval, ThemeColor } from './types';
 import Navigation from './components/Navigation';
@@ -9,6 +10,7 @@ import BabyProfileManager from './components/BabyProfileManager';
 import ActiveTimerWidget from './components/ActiveTimerWidget';
 import LoginScreen from './components/LoginScreen';
 import AdminInviteManager from './components/AdminInviteManager';
+import FamilyOnboarding from './components/FamilyOnboarding';
 import { 
     getRecords, 
     saveRecord, 
@@ -20,7 +22,7 @@ import {
     ensureDataConsistency
 } from './services/storageService';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { Baby, ChevronDown, Moon, Sun, Loader2, Info, ShieldCheck } from 'lucide-react';
+import { Baby, ChevronDown, Moon, Sun, Loader2, Info, ShieldCheck, Users } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 
 const STORAGE_KEY_TIMER_BREAST = 'evalog_timer_breast_v1';
@@ -35,6 +37,9 @@ const App: React.FC = () => {
   const [allRecords, setAllRecords] = useState<FeedingRecord[]>([]);
   const [babies, setBabies] = useState<BabyProfile[]>([]);
   const [currentBabyId, setCurrentBabyId] = useState<string | null>(null);
+  
+  // Family State
+  const [hasFamily, setHasFamily] = useState<boolean | null>(null); // null = unknown
   
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -127,6 +132,9 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setAuthLoading(false);
+      if(!session) {
+          setHasFamily(null); // Reset family state on logout
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -139,8 +147,15 @@ const App: React.FC = () => {
     try {
         if (allRecords.length === 0) setLoading(true);
         
-        const { babies: consistentBabies, records: consistentRecords } = await ensureDataConsistency();
+        const { babies: consistentBabies, records: consistentRecords, family } = await ensureDataConsistency();
         
+        if (!family) {
+            setHasFamily(false);
+            setLoading(false);
+            return;
+        }
+
+        setHasFamily(true);
         setBabies(consistentBabies);
         setAllRecords(consistentRecords);
         
@@ -168,33 +183,21 @@ const App: React.FC = () => {
     }
 
     // Setup Realtime Subscription (Only if logged in to Supabase)
-    if (session?.user?.id && isSupabaseConfigured) {
-        const ownerId = session.user.id;
+    if (session?.user?.id && isSupabaseConfigured && hasFamily) {
+        // We use a simplified realtime subscription since filtering by familyId via 'postgres_changes' 
+        // with RLS can be tricky in the client without custom publication. 
+        // For now, we subscribe to 'public' schema changes which the client receives if they pass RLS.
         const channel = supabase
         .channel('table-db-changes')
         .on(
             'postgres_changes',
-            {
-            event: '*',
-            schema: 'public',
-            table: 'records',
-            filter: `ownerId=eq.${ownerId}`,
-            },
-            (payload) => {
-            getRecords().then(setAllRecords);
-            }
+            { event: '*', schema: 'public', table: 'records' },
+            () => { getRecords().then(setAllRecords); }
         )
         .on(
             'postgres_changes',
-            {
-            event: '*',
-            schema: 'public',
-            table: 'babies',
-            filter: `ownerId=eq.${ownerId}`,
-            },
-            (payload) => {
-            getBabies().then(setBabies);
-            }
+            { event: '*', schema: 'public', table: 'babies' },
+            () => { getBabies().then(setBabies); }
         )
         .subscribe();
 
@@ -202,7 +205,7 @@ const App: React.FC = () => {
              supabase.removeChannel(channel);
         };
     }
-  }, [session]); // Reload if session changes
+  }, [session, hasFamily]); // Reload if session or family state changes
 
   // --- Persist Timer State Logic ---
   useEffect(() => {
@@ -431,12 +434,6 @@ const App: React.FC = () => {
                     <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_URL=...</p>
                     <p className="text-blue-600 dark:text-blue-400 whitespace-nowrap">VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=...</p>
                 </div>
-                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl text-left flex items-start">
-                    <Info size={20} className="text-amber-500 shrink-0 mr-3 mt-0.5" />
-                    <p className="text-xs text-amber-700 dark:text-amber-400">
-                        Siga as instruções no arquivo <strong>SUPABASE_SETUP.md</strong> para criar seu projeto e obter as chaves.
-                    </p>
-                </div>
             </div>
         </div>
       );
@@ -455,10 +452,10 @@ const App: React.FC = () => {
       return <LoginScreen isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
   }
 
-  // Check Admin
-  // @ts-ignore
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const isAdmin = session.user.email === adminEmail;
+  // --- Family Onboarding Check ---
+  if (hasFamily === false && !loading) {
+      return <FamilyOnboarding onSuccess={() => loadData()} />;
+  }
 
   // Derived Data
   const currentBabyRecords = allRecords.filter(r => r.babyId === currentBabyId);
@@ -511,12 +508,14 @@ const App: React.FC = () => {
           <div>
              <div className="flex items-center gap-2">
                  <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-none">EvaLog</h1>
-                 {isAdmin && (
+                 {/* Only show Admin Panel if user has a family */}
+                 {hasFamily && (
                     <button 
                         onClick={() => setShowAdminPanel(true)}
-                        className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border border-amber-200 dark:border-amber-800"
+                        className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 p-1 rounded-md transition-colors"
+                        title="Convidar Membros"
                     >
-                        Admin
+                        <Users size={14} />
                     </button>
                  )}
              </div>
